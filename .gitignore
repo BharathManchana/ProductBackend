@@ -1,0 +1,38 @@
+# Node.js dependencies
+node_modules/
+
+# dotenv environment variables file
+.env
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.swp
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Coverage directory
+coverage/
+
+# IDE/editor settings (example for Visual Studio Code)
+.vscode/
+
+# NPM package lock files (optional, if you want to ignore them)
+package-lock.json
+yarn.lock
+
+# Build output (if any)
+dist/
+build/
+
+# MacOS files (if on a Mac)
+*.DS_Store
+
+# Other potential files to ignore
+*.bak
+*.old

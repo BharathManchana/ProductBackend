@@ -1,0 +1,14 @@
+import { connect } from 'mongoose';
+import path from 'path';
+
+const connectDB = async () => {
+  try {
+    await connect(process.env.MONGO_URI);
+    console.log('MongoDB Connected');
+  } catch (err) {
+    console.error(`Error in file ${path.basename(__filename)}: ${err.message}`);
+    process.exit(1);
+  }
+};
+
+export default connectDB;
