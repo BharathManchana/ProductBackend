@@ -38,13 +38,11 @@ class Blockchain {
     this.pendingTransactions.push(transaction);
     return this.pendingTransactions.length - 1;
   }
-  
 
   async addBlock() {
     const previousBlock = this.chain[this.chain.length - 1];
     
     if (this.pendingTransactions.length === 0) {
-      console.warn('No transactions to add. Creating an empty block.');
       const newBlock = {
         index: this.chain.length,
         timestamp: Date.now(),
@@ -76,7 +74,7 @@ class Blockchain {
     await this.loadBlockchain();
     return newBlock;
   }
-  
+
   async getLastBlock() {
     return this.chain[this.chain.length - 1];
   }

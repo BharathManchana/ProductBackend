@@ -5,6 +5,7 @@ const ProductSchema = new mongoose.Schema({
   price: { type: Number, required: true },
   blockchainId: { type: String, required: true },
   ingredients: [{ type: String, required: true }], 
+  imageUrl: { type: String }, 
 });
 
 export default mongoose.model('Product', ProductSchema);

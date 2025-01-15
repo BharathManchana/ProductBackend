@@ -2,6 +2,7 @@ import Product from '../models/Product.js';
 import Ingredient from '../models/ProductComponent.js';
 import Blockchain from '../blockchain/blockchain.js';
 import crypto from 'crypto';
+import { uploadOnCloudinary } from '../Cloudinary/cloudinary.js'; 
 
 const productQualityBlockchain = new Blockchain();
 
@@ -29,6 +30,20 @@ export const addProduct = async (req, res) => {
     if (!name || !price || !ingredientBlockchainIds || ingredientBlockchainIds.length === 0) {
       return res.status(400).json({ message: 'Invalid product data.' });
     }
+
+    const imageLocalPath = req.file?.path || req.files?.image?.[0]?.path;
+
+    if (!imageLocalPath) {
+      return res.status(400).json({ message: 'Image upload is mandatory.' });
+    }
+
+    const uploadedImage = await uploadOnCloudinary(imageLocalPath);
+    if (!uploadedImage) {
+      return res.status(500).json({ message: 'Failed to upload image.' });
+    }
+
+    const imageUrl = uploadedImage?.url;
+
     const ingredients = await Ingredient.find({ blockchainId: { $in: ingredientBlockchainIds } });
     if (ingredients.length !== ingredientBlockchainIds.length) {
       return res.status(404).json({ message: 'Some ingredients not found.' });
@@ -36,6 +51,7 @@ export const addProduct = async (req, res) => {
 
     let totalQualityScore = 0;
     let totalFreshnessScore = 0;
+
     for (let ingredient of ingredients) {
       const blockchainData = await productQualityBlockchain.getTransactionByBlockchainId(ingredient.blockchainId);
       const qualityScore = blockchainData?.qualityScore || 0;
@@ -43,6 +59,7 @@ export const addProduct = async (req, res) => {
       const freshnessScore = calculateFreshnessScore(ingredient.expiryDate);
       totalFreshnessScore += freshnessScore;
     }
+
     const averageQualityScore = totalQualityScore / ingredients.length;
     const averageFreshnessScore = totalFreshnessScore / ingredients.length;
     const overallScore = (averageQualityScore + averageFreshnessScore) / 2;
@@ -53,6 +70,7 @@ export const addProduct = async (req, res) => {
       qualityScore: overallScore,
       ingredients: ingredientBlockchainIds,
       blockchainId: crypto.randomBytes(16).toString('hex'),
+      imageUrl,
     });
 
     await newProduct.save();
@@ -69,10 +87,11 @@ export const addProduct = async (req, res) => {
     await productQualityBlockchain.createNewTransaction(transaction);
     await productQualityBlockchain.addBlock();
 
-    res.status(201).json({ message: 'Product added successfully and recorded on the blockchain!',
-       product: newProduct,
-       blockchainTransaction: transaction,
-       });
+    res.status(201).json({
+      message: 'Product added successfully and recorded on the blockchain!',
+      product: newProduct,
+      blockchainTransaction: transaction,
+    });
   } catch (err) {
     console.error('Error adding product:', err);
     res.status(500).json({ message: 'Error adding product.' });
