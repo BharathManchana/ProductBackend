@@ -1,10 +1,10 @@
 import Blockchain from '../blockchain/blockchain.js';
 
-const foodQualityBlockchain = new Blockchain();
+const productQualityBlockchain = new Blockchain();
 
 export const getBlockchainData = async (req, res) => {
   try {
-    const blockchainData = await foodQualityBlockchain.getAllTransactions();
+    const blockchainData = await productQualityBlockchain.getAllTransactions();
     const detailedBlockchainData = blockchainData
       .filter(transaction => Object.keys(transaction).length > 0)
       .map(transaction => ({
@@ -34,7 +34,7 @@ export const getBlockchainData = async (req, res) => {
 export const getTransactionById = async (req, res) => {
   try {
     const { blockchainId } = req.params;
-    const transaction = await foodQualityBlockchain.getTransactionByBlockchainId(blockchainId);
+    const transaction = await productQualityBlockchain.getTransactionByBlockchainId(blockchainId);
 
     if (!transaction) {
       return res.status(404).json({ message: 'Transaction not found for the given blockchain ID.' });

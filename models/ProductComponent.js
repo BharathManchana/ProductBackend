@@ -1,6 +1,6 @@
 import { Schema, model } from 'mongoose';
 
-const IngredientSchema = new Schema({
+const ProductComponentSchema = new Schema({
   name: { type: String, required: true },
   description: { type: String, required: true },
   origin: { type: String, required: true },
@@ -10,4 +10,4 @@ const IngredientSchema = new Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
-export default model('Ingredient', IngredientSchema);
+export default model('ProductComponent', ProductComponentSchema);

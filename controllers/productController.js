@@ -1,9 +1,9 @@
-import Dish from '../models/Dish.js';
-import Ingredient from '../models/Ingredient.js';
+import Product from '../models/Product.js';
+import Ingredient from '../models/ProductComponent.js';
 import Blockchain from '../blockchain/blockchain.js';
 import crypto from 'crypto';
 
-const foodQualityBlockchain = new Blockchain();
+const productQualityBlockchain = new Blockchain();
 
 function calculateFreshnessScore(expiryDate) {
   const today = new Date();
@@ -22,12 +22,12 @@ function calculateFreshnessScore(expiryDate) {
   }
 }
 
-export const addDish = async (req, res) => {
+export const addProduct = async (req, res) => {
   try {
     const { name, price, ingredientBlockchainIds } = req.body;
 
     if (!name || !price || !ingredientBlockchainIds || ingredientBlockchainIds.length === 0) {
-      return res.status(400).json({ message: 'Invalid dish data.' });
+      return res.status(400).json({ message: 'Invalid product data.' });
     }
     const ingredients = await Ingredient.find({ blockchainId: { $in: ingredientBlockchainIds } });
     if (ingredients.length !== ingredientBlockchainIds.length) {
@@ -37,7 +37,7 @@ export const addDish = async (req, res) => {
     let totalQualityScore = 0;
     let totalFreshnessScore = 0;
     for (let ingredient of ingredients) {
-      const blockchainData = await foodQualityBlockchain.getTransactionByBlockchainId(ingredient.blockchainId);
+      const blockchainData = await productQualityBlockchain.getTransactionByBlockchainId(ingredient.blockchainId);
       const qualityScore = blockchainData?.qualityScore || 0;
       totalQualityScore += qualityScore;
       const freshnessScore = calculateFreshnessScore(ingredient.expiryDate);
@@ -47,7 +47,7 @@ export const addDish = async (req, res) => {
     const averageFreshnessScore = totalFreshnessScore / ingredients.length;
     const overallScore = (averageQualityScore + averageFreshnessScore) / 2;
 
-    const newDish = new Dish({
+    const newProduct = new Product({
       name,
       price,
       qualityScore: overallScore,
@@ -55,40 +55,40 @@ export const addDish = async (req, res) => {
       blockchainId: crypto.randomBytes(16).toString('hex'),
     });
 
-    await newDish.save();
+    await newProduct.save();
 
     const transaction = {
-      name: newDish.name,
-      price: newDish.price,
-      ingredients: newDish.ingredients,
-      qualityScore: newDish.qualityScore,
-      blockchainId: newDish.blockchainId,  
+      name: newProduct.name,
+      price: newProduct.price,
+      ingredients: newProduct.ingredients,
+      qualityScore: newProduct.qualityScore,
+      blockchainId: newProduct.blockchainId,
       timestamp: Date.now(),
     };
 
-    await foodQualityBlockchain.createNewTransaction(transaction);
-    await foodQualityBlockchain.addBlock();
+    await productQualityBlockchain.createNewTransaction(transaction);
+    await productQualityBlockchain.addBlock();
 
-    res.status(201).json({ message: 'Dish added successfully and recorded on the blockchain!',
-       dish: newDish,
+    res.status(201).json({ message: 'Product added successfully and recorded on the blockchain!',
+       product: newProduct,
        blockchainTransaction: transaction,
        });
   } catch (err) {
-    console.error('Error adding dish:', err);
-    res.status(500).json({ message: 'Error adding dish.' });
+    console.error('Error adding product:', err);
+    res.status(500).json({ message: 'Error adding product.' });
   }
 };
 
-export const getDishes = async (req, res) => {
+export const getProducts = async (req, res) => {
   try {
-    const dishes = await Dish.find();
-    const dishesWithIngredients = [];
+    const products = await Product.find();
+    const productsWithIngredients = [];
 
-    for (let dish of dishes) {
-      const ingredients = await Ingredient.find({ blockchainId: { $in: dish.ingredients } });
+    for (let product of products) {
+      const ingredients = await Ingredient.find({ blockchainId: { $in: product.ingredients } });
       const ingredientsWithScores = await Promise.all(
         ingredients.map(async (ingredient) => {
-          const blockchainData = await foodQualityBlockchain.getTransactionByBlockchainId(ingredient.blockchainId);
+          const blockchainData = await productQualityBlockchain.getTransactionByBlockchainId(ingredient.blockchainId);
 
           if (!blockchainData) {
             console.warn(`Blockchain data not found for ingredient: ${ingredient.name}`);
@@ -117,62 +117,62 @@ export const getDishes = async (req, res) => {
       const averageFreshnessScore = totalFreshnessScore / ingredientsWithScores.length;
       const overallScore = (averageQualityScore + averageFreshnessScore) / 2;
 
-      dishesWithIngredients.push({
-        ...dish.toObject(),
+      productsWithIngredients.push({
+        ...product.toObject(),
         qualityScore: overallScore,
         ingredients: ingredientsWithScores,
       });
     }
 
-    res.status(200).json(dishesWithIngredients);
-  } catch (err) {     
-    console.error('Error fetching dishes:', err);     
-    res.status(500).json({ message: 'Error fetching dishes.' });   
-}
+    res.status(200).json(productsWithIngredients);
+  } catch (err) {
+    console.error('Error fetching products:', err);
+    res.status(500).json({ message: 'Error fetching products.' });
+  }
 };
 
-export const updateDish = async (req, res) => {
+export const updateProduct = async (req, res) => {
   try {
-    const { dishId } = req.params;
+    const { productId } = req.params;
     const { name, price, ingredientBlockchainIds } = req.body;
 
-    const dish = await Dish.findOne({ blockchainId: dishId });
-    if (!dish) {
-      return res.status(404).json({ message: 'Dish not found.' });
+    const product = await Product.findOne({ blockchainId: productId });
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found.' });
     }
 
     let updatedFields = [];
     const previousState = {
-      name: dish.name,
-      price: dish.price,
-      ingredients: dish.ingredients,
+      name: product.name,
+      price: product.price,
+      ingredients: product.ingredients,
     };
 
-    if (name && name !== dish.name) {
-      dish.name = name;
+    if (name && name !== product.name) {
+      product.name = name;
       updatedFields.push('name');
     }
 
-    if (price && price !== dish.price) {
-      dish.price = price;
+    if (price && price !== product.price) {
+      product.price = price;
       updatedFields.push('price');
     }
 
-    if (ingredientBlockchainIds && JSON.stringify(ingredientBlockchainIds) !== JSON.stringify(dish.ingredients)) {
-      dish.ingredients = ingredientBlockchainIds;
+    if (ingredientBlockchainIds && JSON.stringify(ingredientBlockchainIds) !== JSON.stringify(product.ingredients)) {
+      product.ingredients = ingredientBlockchainIds;
       updatedFields.push('ingredients');
     }
 
     if (updatedFields.length > 0) {
-      await dish.save();
+      await product.save();
 
-      const ingredients = await Ingredient.find({ blockchainId: { $in: dish.ingredients } });
+      const ingredients = await Ingredient.find({ blockchainId: { $in: product.ingredients } });
 
       let totalQualityScore = 0;
       let totalFreshnessScore = 0;
 
       for (let ingredient of ingredients) {
-        const blockchainData = await foodQualityBlockchain.getTransactionByBlockchainId(ingredient.blockchainId);
+        const blockchainData = await productQualityBlockchain.getTransactionByBlockchainId(ingredient.blockchainId);
 
         totalQualityScore += blockchainData?.qualityScore || 0;
         totalFreshnessScore += calculateFreshnessScore(ingredient.expiryDate);
@@ -180,80 +180,80 @@ export const updateDish = async (req, res) => {
 
       const averageQualityScore = totalQualityScore / ingredients.length;
       const averageFreshnessScore = totalFreshnessScore / ingredients.length;
-      dish.qualityScore = (averageQualityScore + averageFreshnessScore) / 2;
+      product.qualityScore = (averageQualityScore + averageFreshnessScore) / 2;
 
       const blockchainData = {
-        blockchainId: dish.blockchainId,
+        blockchainId: product.blockchainId,
         action: 'update',
-        name: dish.name,
-        price: dish.price,
-        ingredients: dish.ingredients,
-        qualityScore: dish.qualityScore,
+        name: product.name,
+        price: product.price,
+        ingredients: product.ingredients,
+        qualityScore: product.qualityScore,
         updatedFields,
         previousState,
         timestamp: Date.now(),
       };
 
-      await foodQualityBlockchain.updateTransactionHistory(blockchainData);
+      await productQualityBlockchain.updateTransactionHistory(blockchainData);
 
       res.status(200).json({
-        message: 'Dish updated successfully',
-        dish,
+        message: 'Product updated successfully',
+        product,
         blockchainTransaction: blockchainData,
       });
     } else {
       res.status(200).json({
-        message: 'No changes detected for the dish.',
+        message: 'No changes detected for the product.',
       });
     }
   } catch (err) {
-    console.error('Error updating dish:', err);
-    res.status(500).json({ message: 'Error updating dish.' });
+    console.error('Error updating product:', err);
+    res.status(500).json({ message: 'Error updating product.' });
   }
 };
 
-export const deleteDish = async (req, res) => {
+export const deleteProduct = async (req, res) => {
   try {
-    const { dishId } = req.params;
+    const { productId } = req.params;
 
-    const dish = await Dish.findOneAndDelete({ blockchainId: dishId });
-    if (!dish) {
-      return res.status(404).json({ message: 'Dish not found.' });
+    const product = await Product.findOneAndDelete({ blockchainId: productId });
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found.' });
     }
 
     const blockchainData = {
-      blockchainId: dish.blockchainId,
+      blockchainId: product.blockchainId,
       action: 'delete',
       timestamp: Date.now(),
     };
 
-    await foodQualityBlockchain.createNewTransaction(blockchainData);
-    await foodQualityBlockchain.addBlock();
+    await productQualityBlockchain.createNewTransaction(blockchainData);
+    await productQualityBlockchain.addBlock();
 
     res.status(200).json({
-      message: 'Dish deleted successfully from database and blockchain.',
-      dish,
+      message: 'Product deleted successfully from database and blockchain.',
+      product,
     });
   } catch (err) {
-    console.error('Error deleting dish:', err);
-    res.status(500).json({ message: 'Error deleting dish.' });
+    console.error('Error deleting product:', err);
+    res.status(500).json({ message: 'Error deleting product.' });
   }
 };
 
-export const getDishHistory = async (req, res) => {
+export const getProductHistory = async (req, res) => {
   try {
-    const { dishId } = req.params;
+    const { productId } = req.params;
 
-    const dish = await Dish.findOne({ blockchainId: dishId });
-    if (!dish) {
-      return res.status(404).json({ message: 'Dish not found.' });
+    const product = await Product.findOne({ blockchainId: productId });
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found.' });
     }
 
-    const dishStateHistory = await foodQualityBlockchain.getTransactionByBlockchainId(dish.blockchainId);
+    const productStateHistory = await productQualityBlockchain.getTransactionByBlockchainId(product.blockchainId);
 
-    const ingredients = await Ingredient.find({ blockchainId: { $in: dish.ingredients } });
+    const ingredients = await Ingredient.find({ blockchainId: { $in: product.ingredients } });
     const ingredientHistories = await Promise.all(ingredients.map(async (ingredient) => {
-      const ingredientHistory = await foodQualityBlockchain.getTransactionByBlockchainId(ingredient.blockchainId);
+      const ingredientHistory = await productQualityBlockchain.getTransactionByBlockchainId(ingredient.blockchainId);
       const freshnessScore = calculateFreshnessScore(ingredient.expiryDate);
       const qualityScore = ingredientHistory?.qualityScore || 0;
       return {
@@ -284,34 +284,34 @@ export const getDishHistory = async (req, res) => {
 
     const averageQualityScore = totalQualityScore / ingredientHistories.length;
     const averageFreshnessScore = totalFreshnessScore / ingredientHistories.length;
-    const dishQualityScore = (averageQualityScore + averageFreshnessScore) / 2;
+    const productQualityScore = (averageQualityScore + averageFreshnessScore) / 2;
 
-    const currentDishState = {
-      name: dish.name,
-      price: dish.price,
-      ingredients: dish.ingredients,
-      blockchainId: dish.blockchainId,
+    const currentProductState = {
+      name: product.name,
+      price: product.price,
+      ingredients: product.ingredients,
+      blockchainId: product.blockchainId,
       timestamp: Date.now(),
-      qualityScore: dishQualityScore, 
+      qualityScore: productQualityScore,
     };
 
     const updatedFields = [];
-    if (dishStateHistory.name !== currentDishState.name) updatedFields.push("name");
-    if (dishStateHistory.price !== currentDishState.price) updatedFields.push("price");
-    if (JSON.stringify(dishStateHistory.ingredients) !== JSON.stringify(currentDishState.ingredients)) updatedFields.push("ingredients");
+    if (productStateHistory.name !== currentProductState.name) updatedFields.push("name");
+    if (productStateHistory.price !== currentProductState.price) updatedFields.push("price");
+    if (JSON.stringify(productStateHistory.ingredients) !== JSON.stringify(currentProductState.ingredients)) updatedFields.push("ingredients");
 
     const formattedHistory = {
-      message: "Dish updated successfully",
-      dish: currentDishState,
+      message: "Product updated successfully",
+      product: currentProductState,
       blockchainTransaction: {
-        ...currentDishState,
+        ...currentProductState,
         action: "update",
-        qualityScore: dishQualityScore,
+        qualityScore: productQualityScore,
         updatedFields,
         previousState: {
-          name: dishStateHistory.name,
-          price: dishStateHistory.price,
-          ingredients: dishStateHistory.ingredients,
+          name: productStateHistory.name,
+          price: productStateHistory.price,
+          ingredients: productStateHistory.ingredients,
         },
         timestamp: Date.now(),
       },
@@ -320,7 +320,7 @@ export const getDishHistory = async (req, res) => {
 
     res.status(200).json(formattedHistory);
   } catch (err) {
-    console.error('Error fetching dish history:', err);
-    res.status(500).json({ message: 'Error fetching dish history.' });
+    console.error('Error fetching product history:', err);
+    res.status(500).json({ message: 'Error fetching product history.' });
   }
 };
